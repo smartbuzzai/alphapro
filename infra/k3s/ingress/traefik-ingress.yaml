@@ -1,0 +1,74 @@
+# K3s ships with Traefik as the default ingress controller.
+# This replaces the need for a separate nginx ingress install.
+# Traefik automatically handles SSL termination via Let's Encrypt.
+
+# ── INGRESS ─────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: enterprise-ingress
+  namespace: production
+  annotations:
+    # Traefik-specific annotations
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # Let's Encrypt via Traefik cert-manager
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    # Rate limiting middleware
+    traefik.ingress.kubernetes.io/router.middlewares: production-ratelimit@kubernetescrd
+spec:
+  rules:
+    - host: api.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: enterprise-api
+                port:
+                  number: 3001
+
+    - host: yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: enterprise-web
+                port:
+                  number: 3000
+
+---
+# ── TRAEFIK RATE LIMIT MIDDLEWARE ────────────────────────
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: ratelimit
+  namespace: production
+spec:
+  rateLimit:
+    average: 100
+    burst: 50
+    period: 1m
+
+---
+# ── TRAEFIK TLS CONFIG via K3s HelmChartConfig ──────────
+# Place this in /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+# K3s auto-applies files in that directory on startup
+#
+# apiVersion: helm.cattle.io/v1
+# kind: HelmChartConfig
+# metadata:
+#   name: traefik
+#   namespace: kube-system
+# spec:
+#   valuesContent: |-
+#     additionalArguments:
+#       - "--certificatesresolvers.letsencrypt.acme.email=you@yourdomain.com"
+#       - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+#       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+#     persistence:
+#       enabled: true
+#       size: 128Mi

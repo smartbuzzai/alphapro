@@ -1,4 +1,4 @@
-# Alpha Pro
+# Enterprise App
 
 Production-grade monorepo running NestJS + Next.js on a Contabo VPS (Ubuntu 24.04).
 

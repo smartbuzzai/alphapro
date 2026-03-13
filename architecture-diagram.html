@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enterprise Stack — Architecture Diagram</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #060a0e;
+    --bg2:      #080c12;
+    --border:   #1a2332;
+    --border2:  #0f1822;
+    --text:     #c9d1d9;
+    --muted:    #4a6070;
+    --muted2:   #2a3a4a;
+    --cyan:     #00b4d8;
+    --amber:    #f4a261;
+    --teal:     #2ec4b6;
+    --gold:     #e9c46a;
+    --slate:    #a8dadc;
+    --coral:    #e76f51;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  #header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,180,216,0.025);
+    flex-shrink: 0;
+  }
+  #header-left { display: flex; flex-direction: column; gap: 3px; }
+  #logo-row { display: flex; align-items: center; gap: 10px; }
+  #logo-icon {
+    width: 28px; height: 28px;
+    border: 1.5px solid var(--cyan);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--cyan);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+  #logo-text { font-size: 13px; font-weight: 700; letter-spacing: 4px; color: #e0e6ed; text-transform: uppercase; }
+  #logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-left: 38px; }
+
+  .tab-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: inherit;
+    transition: all 0.18s;
+    margin-left: 6px;
+  }
+  .tab-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+  .tab-btn.active { background: rgba(0,180,216,0.12); border-color: var(--cyan); color: var(--cyan); }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  #body { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Tabs ── */
+  .tab-pane { display: none; width: 100%; }
+  .tab-pane.active { display: flex; }
+
+  /* ── Architecture Tab ── */
+  #arch-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 22px;
+  }
+  #arch-sidebar {
+    width: 270px;
+    border-left: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 20px 16px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .layer {
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: default;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .layer:hover { background: var(--layer-bg); border-color: var(--layer-color) !important; }
+  .layer-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+  }
+  .layer-nodes { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .node {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid #1e2d3d;
+    border-radius: 5px;
+    padding: 10px 14px;
+    min-width: 130px;
+    cursor: pointer;
+    transition: all 0.16s;
+  }
+  .node:hover, .node.selected {
+    border-color: var(--node-color);
+    background: var(--node-bg);
+    box-shadow: 0 0 14px var(--node-glow);
+  }
+  .node-icon { font-size: 18px; margin-bottom: 6px; }
+  .node-label { font-size: 12px; color: #d0dae8; font-weight: 600; }
+  .node-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .layer-arrow {
+    text-align: center;
+    color: var(--border);
+    font-size: 16px;
+    margin: 2px 0 4px;
+    line-height: 1;
+  }
+
+  /* Sidebar detail */
+  .detail-icon { font-size: 24px; margin-bottom: 8px; }
+  .detail-title { font-size: 14px; color: #e0e6ed; font-weight: 700; }
+  .detail-sub { font-size: 11px; color: var(--muted); margin-top: 4px; margin-bottom: 18px; }
+  .detail-divider { height: 1px; background: var(--border); margin-bottom: 18px; }
+  .detail-item { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-start; }
+  .detail-dot { font-size: 8px; margin-top: 3px; flex-shrink: 0; }
+  .detail-text { font-size: 11px; color: #8090a0; line-height: 1.6; }
+
+  .stack-item { margin-bottom: 10px; }
+  .stack-key { font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+  .stack-val { font-size: 11px; color: var(--slate); margin-top: 1px; }
+
+  .tip-box {
+    margin-top: 18px;
+    padding: 10px 12px;
+    background: rgba(0,180,216,0.05);
+    border: 1px solid #0a1520;
+    border-radius: 4px;
+  }
+  .tip-label { font-size: 9px; color: var(--cyan); margin-bottom: 4px; }
+  .tip-text { font-size: 10px; color: var(--muted); line-height: 1.6; }
+
+  /* ── Scaffold Tab ── */
+  #scaffold-tree {
+    width: 270px;
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 18px 10px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  #scaffold-code {
+    flex: 1;
+    padding: 20px 24px;
+    overflow-y: auto;
+  }
+
+  .tree-root { font-size: 10px; color: var(--teal); margin-bottom: 8px; padding-left: 6px; }
+
+  .tree-node {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.12s;
+    font-size: 12px;
+  }
+  .tree-node:hover { background: rgba(255,255,255,0.04); }
+  .tree-node.selected { background: rgba(0,180,216,0.15); border-left-color: var(--cyan); color: var(--cyan); }
+  .tree-node.dir { color: var(--gold); }
+  .tree-node.file { color: var(--slate); }
+  .tree-arrow { opacity: 0.5; font-size: 10px; flex-shrink: 0; }
+  .view-badge { font-size: 9px; color: var(--cyan); opacity: 0.5; margin-left: auto; }
+
+  /* Code preview */
+  .code-header { font-size: 9px; letter-spacing: 3px; color: var(--muted); margin-bottom: 10px; }
+  .code-block {
+    background: #030508;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .code-block pre {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.75;
+    color: var(--slate);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: pre;
+  }
+
+  /* Scaffold overview grid */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .overview-card {
+    background: rgba(255,255,255,0.015);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    padding: 14px 16px;
+  }
+  .card-title { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+  .card-desc { font-size: 10px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+  .card-file { font-size: 10px; color: #6a8090; margin-bottom: 3px; }
+  .card-dot { color: var(--border2); margin-right: 6px; }
+
+  .quickstart-box {
+    padding: 14px 18px;
+    background: rgba(46,196,182,0.04);
+    border: 1px solid #0a1520;
+    border-radius: 5px;
+  }
+  .quickstart-label { font-size: 9px; color: var(--teal); letter-spacing: 2px; margin-bottom: 8px; }
+  .quickstart-box pre {
+    margin: 0;
+    font-size: 11.5px;
+    color: #6a8090;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.9;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted2); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div id="header-left">
+      <div id="logo-row">
+        <div id="logo-icon">⬡</div>
+        <span id="logo-text">Enterprise Stack</span>
+      </div>
+      <div id="logo-sub">NestJS · Next.js · K8s · OpenTelemetry</div>
+    </div>
+    <div>
+      <button class="tab-btn active" onclick="switchTab('arch')">Architecture</button>
+      <button class="tab-btn" onclick="switchTab('scaffold')">Scaffold</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div id="body">
+
+    <!-- ── ARCHITECTURE TAB ── -->
+    <div id="tab-arch" class="tab-pane active">
+
+      <div id="arch-main">
+        <div class="section-label">System Architecture · Click any node to inspect</div>
+        <div id="layers-container"></div>
+      </div>
+
+      <div id="arch-sidebar">
+        <div id="sidebar-content"></div>
+      </div>
+
+    </div>
+
+    <!-- ── SCAFFOLD TAB ── -->
+    <div id="tab-scaffold" class="tab-pane">
+
+      <div id="scaffold-tree">
+        <div class="section-label" style="padding-left:6px">Project Structure</div>
+        <div class="tree-root">enterprise-app/</div>
+        <div id="tree-container"></div>
+      </div>
+
+      <div id="scaffold-code">
+        <div id="code-content"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── DATA ────────────────────────────────────────────────────────────
+
+const LAYERS = [
+  {
+    id: 'client', label: 'CLIENT LAYER',
+    color: '#00b4d8', bg: 'rgba(0,180,216,0.07)',
+    nodes: [
+      { id: 'nextjs',     label: 'Next.js 14',      sub: 'App Router + SSR',    icon: '◈' },
+      { id: 'featuregate',label: 'Feature Gates',   sub: 'Unleash SDK',         icon: '⊞' },
+      { id: 'edgemw',     label: 'Edge Middleware',  sub: 'Auth at Edge',        icon: '⬡' },
+    ]
+  },
+  {
+    id: 'gateway', label: 'API GATEWAY',
+    color: '#f4a261', bg: 'rgba(244,162,97,0.07)',
+    nodes: [
+      { id: 'ratelimit',  label: 'Rate Limiter',    sub: 'Token Bucket',        icon: '⊘' },
+      { id: 'jwt',        label: 'JWT / OAuth2',    sub: 'mTLS between svcs',   icon: '⛨' },
+      { id: 'helmet',     label: 'Helmet + CSP',    sub: 'OWASP Headers',       icon: '⬟' },
+    ]
+  },
+  {
+    id: 'core', label: 'CORE — NestJS',
+    color: '#2ec4b6', bg: 'rgba(46,196,182,0.07)',
+    nodes: [
+      { id: 'modules',    label: 'Dynamic Modules', sub: 'Toggle on/off',       icon: '⊕' },
+      { id: 'rbac',       label: 'RBAC Guards',     sub: 'Role-based access',   icon: '◎' },
+      { id: 'circuit',    label: 'Circuit Breaker', sub: 'Opossum / Cockatiel', icon: '⊛' },
+      { id: 'retry',      label: 'Retry + Backoff', sub: 'Exp. + Jitter',       icon: '↺' },
+    ]
+  },
+  {
+    id: 'observability', label: 'OBSERVABILITY',
+    color: '#e9c46a', bg: 'rgba(233,196,106,0.07)',
+    nodes: [
+      { id: 'otel',       label: 'OpenTelemetry',  sub: 'Distributed Tracing', icon: '◉' },
+      { id: 'prom',       label: 'Prometheus',     sub: 'Metrics Scraping',    icon: '◈' },
+      { id: 'grafana',    label: 'Grafana',        sub: 'Live Dashboards',     icon: '▦' },
+      { id: 'sentry',     label: 'Sentry',         sub: 'Error Tracking',      icon: '⊟' },
+    ]
+  },
+  {
+    id: 'infra', label: 'INFRASTRUCTURE',
+    color: '#a8dadc', bg: 'rgba(168,218,220,0.07)',
+    nodes: [
+      { id: 'k8s',        label: 'Kubernetes',     sub: 'Probes + Self-heal',  icon: '⬡' },
+      { id: 'vault',      label: 'Vault',          sub: 'Secrets Mgmt',        icon: '⊠' },
+      { id: 'terraform',  label: 'Terraform',      sub: 'IaC Provisioning',    icon: '△' },
+      { id: 'cicd',       label: 'CI/CD Pipeline', sub: 'GitHub Actions',      icon: '⇒' },
+    ]
+  }
+];
+
+const NODE_DETAILS = {
+  nextjs:     { items: ['App Router with Server Components','Edge runtime for auth middleware','Built-in image optimization + CDN','ISR + SSG for static pages','TypeScript + ESLint out of box'] },
+  featuregate:{ items: ['Unleash SDK wraps components','Toggle per user / role / env','Zero-deployment rollbacks','A/B testing built in','Audit log on every flag change'] },
+  edgemw:     { items: ['Runs before request hits server','JWT validation at Vercel Edge','Geo-blocking + IP allow-lists','No cold start latency','Protects all routes by default'] },
+  ratelimit:  { items: ['Token bucket algorithm','Per-user and per-IP limits','Redis-backed for cluster mode','429 with Retry-After header','Configurable per endpoint'] },
+  jwt:        { items: ['Short-lived access tokens (15min)','Refresh token rotation','mTLS between internal services','OAuth2 with PKCE for SPA','Token blacklist on logout'] },
+  helmet:     { items: ['HSTS strict transport','Content-Security-Policy headers','X-Frame-Options: DENY','CORS strict origin checking','Referrer-Policy no-referrer'] },
+  modules:    { items: ['Registered via env flags','Hot-unregister without restart','Per-tenant module loading','Dependency injection scoped','Zero cross-module leakage'] },
+  rbac:       { items: ["Decorator-driven: @Roles('admin')",'Permission matrix per endpoint','Row-level security hooks','JWT claims carry roles','Audit every access decision'] },
+  circuit:    { items: ['Opens after 50% error rate','30s reset timeout','Fallback response defined','Logs state transitions','Prometheus metrics exported'] },
+  retry:      { items: ['Exponential backoff base 1s','Jitter prevents thundering herd','Max 3 retries by default','Idempotency key required','Dead letter queue on failure'] },
+  otel:       { items: ['Auto-instruments HTTP + DB','Trace context in headers','Spans exported to Jaeger','Sampling rate configurable','Zero code changes for new routes'] },
+  prom:       { items: ['Scrapes /metrics every 15s','Custom business metrics','Histogram for p50/p95/p99','Alertmanager integration','Long-term via Thanos'] },
+  grafana:    { items: ['Pre-built NestJS dashboard','RED method: Rate, Error, Duration','K8s cluster overview','Alert routing to PagerDuty','Annotation on every deploy'] },
+  sentry:     { items: ['Source maps for exact line','Automatic error grouping','Performance tracing','Release tracking per deploy','Slack alerts on regression'] },
+  k8s:        { items: ['Liveness probe restarts bad pods','Readiness probe gates traffic','HPA scales on CPU + RPS','PodDisruptionBudget','Rollback in one command'] },
+  vault:      { items: ['Dynamic DB credentials','Secret leases auto-renew','Audit log all reads/writes','No secrets in env files','K8s service account auth'] },
+  terraform:  { items: ['All infra as code','Remote state in S3 + lock','Modules for reusable infra','Plan preview in CI/CD','Drift detection scheduled'] },
+  cicd:       { items: ['PR → lint → test → build','OWASP ZAP security scan','Semgrep SAST on every PR','Docker build + push to ECR','Auto deploy on main merge'] },
+};
+
+const STACK_SUMMARY = [
+  { label: 'Runtime',      val: 'Node 20 LTS + TypeScript 5' },
+  { label: 'Backend',      val: 'NestJS 10' },
+  { label: 'Frontend',     val: 'Next.js 14 (App Router)' },
+  { label: 'Monorepo',     val: 'Turborepo' },
+  { label: 'Feature Flags',val: 'Unleash (self-hosted)' },
+  { label: 'Secrets',      val: 'HashiCorp Vault' },
+  { label: 'Tracing',      val: 'OpenTelemetry → Jaeger' },
+  { label: 'Metrics',      val: 'Prometheus + Grafana' },
+  { label: 'Errors',       val: 'Sentry' },
+  { label: 'Infra',        val: 'Kubernetes + Terraform' },
+  { label: 'CI/CD',        val: 'GitHub Actions' },
+  { label: 'Auth',         val: 'JWT + OAuth2 + mTLS' },
+];
+
+const FILE_CODE = {
+  'app.module.ts': `import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { HealthModule } from './core/health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+
+function getFeatureModules() {
+  const modules = [];
+  if (process.env.FEATURE_AUDIT === 'true') modules.push(AuditModule);
+  if (process.env.FEATURE_NOTIFICATIONS === 'true') modules.push(NotificationsModule);
+  return modules;
+}
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [{
+        ttl: 60000,
+        limit: config.get('THROTTLE_LONG_LIMIT', 100),
+      }],
+    }),
+    HealthModule,
+    AuthModule,
+    UsersModule,
+    ...getFeatureModules(),
+  ],
+})
+export class AppModule {}`,
+
+  'auth.guard.ts': `import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
+import { SecretsService } from '../shared/vault/secrets.service';
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly secretsService: SecretsService,
+    private readonly reflector: Reflector,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
+      context.getHandler(), context.getClass(),
+    ]);
+    if (isPublic) return true;
+
+    const request = context.switchToHttp().getRequest<Request>();
+    const token = request.headers.authorization?.split(' ')[1];
+    if (!token) throw new UnauthorizedException('No bearer token');
+
+    const secret = await this.secretsService.get('JWT_SECRET');
+    request['user'] = await this.jwtService.verifyAsync(token, { secret });
+    return true;
+  }
+}`,
+
+  'circuit-breaker.service.ts': `import { Injectable, Logger } from '@nestjs/common';
+import * as CircuitBreaker from 'opossum';
+
+const DEFAULTS = {
+  timeout: 3000,
+  errorThresholdPercentage: 50,
+  resetTimeout: 30000,
+  volumeThreshold: 5,
+};
+
+@Injectable()
+export class CircuitBreakerService {
+  private readonly logger = new Logger(CircuitBreakerService.name);
+  private readonly breakers = new Map();
+
+  async fire<T>(name: string, fn: () => Promise<T>, fallback?: () => T): Promise<T> {
+    if (!this.breakers.has(name)) {
+      const breaker = new CircuitBreaker(fn, DEFAULTS);
+      breaker.fallback(fallback ?? (() => { throw new Error(\`\${name} unavailable\`); }));
+      breaker.on('open',     () => this.logger.error(\`🔴 OPEN: \${name}\`));
+      breaker.on('halfOpen', () => this.logger.warn(\`🟡 HALF-OPEN: \${name}\`));
+      breaker.on('close',    () => this.logger.log(\`🟢 CLOSED: \${name}\`));
+      this.breakers.set(name, breaker);
+    }
+    return this.breakers.get(name).fire();
+  }
+}`,
+
+  'health.controller.ts': `import { Controller, Get } from '@nestjs/common';
+import { HealthCheck, HealthCheckService, HttpHealthIndicator,
+  TypeOrmHealthIndicator, MemoryHealthIndicator } from '@nestjs/terminus';
+
+@Controller('health')
+export class HealthController {
+  constructor(
+    private health: HealthCheckService,
+    private http: HttpHealthIndicator,
+    private db: TypeOrmHealthIndicator,
+    private memory: MemoryHealthIndicator,
+  ) {}
+
+  /** Kubernetes LIVENESS — is process alive? Restart pod on failure. */
+  @Get('live')
+  @HealthCheck()
+  liveness() {
+    return this.health.check([
+      () => this.memory.checkHeap('heap', 512 * 1024 * 1024),
+      () => this.memory.checkRSS('rss',  1024 * 1024 * 1024),
+    ]);
+  }
+
+  /** Kubernetes READINESS — check all deps, remove from LB on failure. */
+  @Get('ready')
+  @HealthCheck()
+  readiness() {
+    return this.health.check([
+      () => this.db.pingCheck('database'),
+      () => this.http.pingCheck('unleash', process.env.UNLEASH_URL + '/health'),
+    ]);
+  }
+}`,
+
+  'FeatureGate.tsx': `'use client';
+import { useFlag, useVariant } from '@unleash/nextjs/client';
+
+interface FeatureGateProps {
+  flag: string;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+/** Show/hide content behind an Unleash feature flag.
+ * @example
+ * <FeatureGate flag="new-dashboard" fallback={<OldDashboard />}>
+ *   <NewDashboard />
+ * </FeatureGate>
+ */
+export function FeatureGate({ flag, children, fallback = null }: FeatureGateProps) {
+  const { enabled } = useFlag(flag);
+  return <>{enabled ? children : fallback}</>;
+}
+
+/** A/B test variant gate */
+export function VariantGate({ flag, variant, children, fallback = null }) {
+  const v = useVariant(flag);
+  return <>{v.enabled && v.name === variant ? children : fallback}</>;
+}`,
+
+  'liveness.yaml': `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enterprise-api
+  namespace: production
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  template:
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: api
+          image: registry/enterprise-api:latest
+          livenessProbe:
+            httpGet: { path: /health/live, port: 3001 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 3001 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+            successThreshold: 2
+          startupProbe:
+            httpGet: { path: /health/live, port: 3001 }
+            failureThreshold: 30
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits:   { cpu: "1",  memory: 1Gi }`,
+
+  'prometheus.yml': `global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - 'alerts.yml'
+
+scrape_configs:
+  - job_name: 'enterprise-api'
+    static_configs:
+      - targets: ['api:3001']
+    metrics_path: /metrics
+
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true`,
+
+  'ci.yml': `name: CI/CD Pipeline
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: npm }
+      - run: npm ci && npm run lint && npm run type-check
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_DB: test, POSTGRES_USER: test, POSTGRES_PASSWORD: test }
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm run test:ci
+
+  security-sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/typescript p/nodejs p/owasp-top-ten
+
+  deploy:
+    needs: [lint, test, security-sast]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - run: kubectl set image deployment/enterprise-api api=\$IMAGE -n production
+      - run: kubectl rollout status deployment/enterprise-api -n production --timeout=5m`
+};
+
+const SCAFFOLD_TREE = [
+  { n:'apps/', t:'d', ch:[
+    { n:'api/', t:'d', ch:[
+      { n:'src/', t:'d', ch:[
+        { n:'main.ts', t:'f' },
+        { n:'app.module.ts', t:'f', k:'app.module.ts' },
+        { n:'core/', t:'d', ch:[
+          { n:'guards/', t:'d', ch:[
+            { n:'auth.guard.ts', t:'f', k:'auth.guard.ts' },
+            { n:'rbac.guard.ts', t:'f' },
+            { n:'rate-limit.guard.ts', t:'f' },
+          ]},
+          { n:'health/', t:'d', ch:[
+            { n:'health.controller.ts', t:'f', k:'health.controller.ts' },
+            { n:'health.module.ts', t:'f' },
+          ]},
+          { n:'interceptors/', t:'d', ch:[
+            { n:'logging.interceptor.ts', t:'f' },
+            { n:'error.interceptor.ts', t:'f' },
+          ]},
+          { n:'telemetry/', t:'d', ch:[
+            { n:'otel.ts', t:'f' },
+            { n:'metrics.service.ts', t:'f' },
+          ]},
+          { n:'filters/', t:'d', ch:[
+            { n:'global-exception.filter.ts', t:'f' },
+          ]},
+        ]},
+        { n:'modules/', t:'d', ch:[
+          { n:'auth/', t:'d', ch:[
+            { n:'auth.module.ts', t:'f' },
+            { n:'auth.service.ts', t:'f' },
+            { n:'strategies/', t:'d', ch:[
+              { n:'jwt.strategy.ts', t:'f' },
+              { n:'oauth.strategy.ts', t:'f' },
+            ]},
+          ]},
+          { n:'users/', t:'d', ch:[] },
+          { n:'audit/', t:'d', ch:[] },
+          { n:'notifications/', t:'d', ch:[] },
+        ]},
+        { n:'shared/', t:'d', ch:[
+          { n:'circuit-breaker/', t:'d', ch:[
+            { n:'circuit-breaker.service.ts', t:'f', k:'circuit-breaker.service.ts' },
+          ]},
+          { n:'retry/', t:'d', ch:[
+            { n:'retry.decorator.ts', t:'f' },
+          ]},
+          { n:'vault/', t:'d', ch:[
+            { n:'secrets.service.ts', t:'f' },
+          ]},
+        ]},
+      ]},
+    ]},
+    { n:'web/', t:'d', ch:[
+      { n:'src/', t:'d', ch:[
+        { n:'app/', t:'d', ch:[] },
+        { n:'components/', t:'d', ch:[
+          { n:'feature-gate/', t:'d', ch:[
+            { n:'FeatureGate.tsx', t:'f', k:'FeatureGate.tsx' },
+          ]},
+        ]},
+        { n:'middleware.ts', t:'f' },
+      ]},
+    ]},
+  ]},
+  { n:'infra/', t:'d', ch:[
+    { n:'k8s/', t:'d', ch:[
+      { n:'probes/', t:'d', ch:[
+        { n:'liveness.yaml', t:'f', k:'liveness.yaml' },
+      ]},
+    ]},
+    { n:'monitoring/', t:'d', ch:[
+      { n:'prometheus/', t:'d', ch:[
+        { n:'prometheus.yml', t:'f', k:'prometheus.yml' },
+      ]},
+      { n:'alertmanager/', t:'d', ch:[
+        { n:'alerts.yml', t:'f' },
+      ]},
+      { n:'grafana/', t:'d', ch:[] },
+    ]},
+    { n:'terraform/', t:'d', ch:[] },
+  ]},
+  { n:'packages/', t:'d', ch:[
+    { n:'types/', t:'d', ch:[] },
+    { n:'utils/', t:'d', ch:[] },
+    { n:'ui/', t:'d', ch:[] },
+  ]},
+  { n:'.github/workflows/', t:'d', ch:[
+    { n:'ci.yml', t:'f', k:'ci.yml' },
+    { n:'security-scan.yml', t:'f' },
+    { n:'deploy.yml', t:'f' },
+  ]},
+  { n:'docker-compose.yml', t:'f' },
+  { n:'.env.example', t:'f' },
+  { n:'package.json', t:'f' },
+  { n:'turbo.json', t:'f' },
+];
+
+const OVERVIEW_CARDS = [
+  { title:'apps/api', desc:'NestJS backend — modular architecture', color:'#2ec4b6',
+    files:['Dynamic module loader','JWT + RBAC guards','Health endpoints (liveness/readiness)','Circuit breaker service','OpenTelemetry SDK setup'] },
+  { title:'apps/web', desc:'Next.js 14 frontend — App Router', color:'#00b4d8',
+    files:['Edge auth middleware','Feature gate components','Server + client components','Unleash SDK integration'] },
+  { title:'infra/k8s', desc:'Kubernetes manifests for self-healing', color:'#f4a261',
+    files:['Liveness + readiness + startup probes','HPA autoscaling (CPU + memory)','PodDisruptionBudget','Rolling deployment config'] },
+  { title:'infra/monitoring', desc:'Full observability stack', color:'#e9c46a',
+    files:['Prometheus scrape config','Alertmanager rules (5 alerts)','Grafana dashboard provisioning','Sentry DSN wiring'] },
+  { title:'packages/', desc:'Shared monorepo packages', color:'#a8dadc',
+    files:['TypeScript types','Shared utilities','UI component library','Validation schemas'] },
+  { title:'.github/workflows', desc:'CI/CD + security automation', color:'#e76f51',
+    files:['Lint + type-check + test','Semgrep SAST scan','Dependency audit (Snyk)','Auto deploy + rollback'] },
+];
+
+// ── STATE ────────────────────────────────────────────────────────────
+let selectedNode = null;
+let selectedFile = null;
+let expandedDirs = new Set();
+
+// ── RENDER: ARCHITECTURE ────────────────────────────────────────────
+
+function renderLayers() {
+  const container = document.getElementById('layers-container');
+  container.innerHTML = '';
+  LAYERS.forEach((layer, li) => {
+    const layerEl = document.createElement('div');
+    layerEl.className = 'layer';
+    layerEl.style.setProperty('--layer-color', layer.color);
+    layerEl.style.setProperty('--layer-bg', layer.bg);
+    layerEl.style.borderLeft = `3px solid ${layer.color}`;
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'layer-label';
+    labelEl.style.color = layer.color;
+    labelEl.textContent = layer.label;
+    layerEl.appendChild(labelEl);
+
+    const nodesEl = document.createElement('div');
+    nodesEl.className = 'layer-nodes';
+
+    layer.nodes.forEach(node => {
+      const nodeEl = document.createElement('div');
+      nodeEl.className = 'node' + (selectedNode === node.id ? ' selected' : '');
+      nodeEl.style.setProperty('--node-color', layer.color);
+      nodeEl.style.setProperty('--node-bg', layer.bg);
+      nodeEl.style.setProperty('--node-glow', layer.color + '33');
+      nodeEl.innerHTML = `
+        <div class="node-icon" style="color:${layer.color}">${node.icon}</div>
+        <div class="node-label">${node.label}</div>
+        <div class="node-sub">${node.sub}</div>
+      `;
+      nodeEl.onclick = () => {
+        selectedNode = selectedNode === node.id ? null : node.id;
+        renderLayers();
+        renderSidebar();
+      };
+      nodesEl.appendChild(nodeEl);
+    });
+
+    layerEl.appendChild(nodesEl);
+    container.appendChild(layerEl);
+
+    if (li < LAYERS.length - 1) {
+      const arrow = document.createElement('div');
+      arrow.className = 'layer-arrow';
+      arrow.textContent = '↓';
+      container.appendChild(arrow);
+    }
+  });
+}
+
+function renderSidebar() {
+  const el = document.getElementById('sidebar-content');
+
+  if (!selectedNode) {
+    el.innerHTML = `
+      <div class="section-label">Stack Summary</div>
+      ${STACK_SUMMARY.map(s => `
+        <div class="stack-item">
+          <div class="stack-key">${s.label}</div>
+          <div class="stack-val">${s.val}</div>
+        </div>
+      `).join('')}
+      <div class="tip-box">
+        <div class="tip-label">TIP</div>
+        <div class="tip-text">Click any node in the diagram to see implementation details.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const layer = LAYERS.find(l => l.nodes.some(n => n.id === selectedNode));
+  const node = layer?.nodes.find(n => n.id === selectedNode);
+  const details = NODE_DETAILS[selectedNode];
+
+  el.innerHTML = `
+    <div class="section-label" style="color:${layer?.color}">Selected Node</div>
+    <div class="detail-icon" style="color:${layer?.color}">${node?.icon}</div>
+    <div class="detail-title">${node?.label}</div>
+    <div class="detail-sub">${node?.sub}</div>
+    <div class="detail-divider"></div>
+    ${details?.items.map(item => `
+      <div class="detail-item">
+        <span class="detail-dot" style="color:${layer?.color}">◆</span>
+        <span class="detail-text">${item}</span>
+      </div>
+    `).join('')}
+  `;
+}
+
+// ── RENDER: SCAFFOLD ─────────────────────────────────────────────────
+
+function renderTree(nodes, depth = 0, container) {
+  nodes.forEach(node => {
+    const isDir = node.t === 'd';
+    const isExpanded = expandedDirs.has(node.n + depth);
+    const hasChildren = isDir && node.ch && node.ch.length > 0;
+
+    const el = document.createElement('div');
+    el.style.marginLeft = (depth * 14) + 'px';
+
+    const row = document.createElement('div');
+    row.className = 'tree-node ' + (isDir ? 'dir' : 'file') + (selectedFile === node.k ? ' selected' : '');
+
+    row.innerHTML = `
+      <span class="tree-arrow">${isDir ? (isExpanded ? '▾' : '▸') : '·'}</span>
+      <span>${node.n}</span>
+      ${node.k ? '<span class="view-badge">view</span>' : ''}
+    `;
+
+    row.onclick = () => {
+      if (isDir) {
+        const key = node.n + depth;
+        if (expandedDirs.has(key)) expandedDirs.delete(key);
+        else expandedDirs.add(key);
+        renderScaffold();
+      }
+      if (node.k) {
+        selectedFile = node.k === selectedFile ? null : node.k;
+        renderScaffold();
+      }
+    };
+
+    el.appendChild(row);
+    container.appendChild(el);
+
+    if (isDir && isExpanded && hasChildren) {
+      renderTree(node.ch, depth + 1, container);
+    }
+  });
+}
+
+function renderScaffold() {
+  const treeContainer = document.getElementById('tree-container');
+  treeContainer.innerHTML = '';
+
+  // Auto-expand top level
+  SCAFFOLD_TREE.forEach(n => {
+    if (n.t === 'd') expandedDirs.add(n.n + '0');
+  });
+
+  renderTree(SCAFFOLD_TREE, 0, treeContainer);
+  renderCodePanel();
+}
+
+function renderCodePanel() {
+  const el = document.getElementById('code-content');
+
+  if (selectedFile && FILE_CODE[selectedFile]) {
+    el.innerHTML = `
+      <div class="code-header">${selectedFile}</div>
+      <div class="code-block"><pre>${escapeHtml(FILE_CODE[selectedFile])}</pre></div>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="section-label">Scaffold Overview</div>
+    <div class="overview-grid">
+      ${OVERVIEW_CARDS.map(c => `
+        <div class="overview-card" style="border-left:3px solid ${c.color}">
+          <div class="card-title" style="color:${c.color}">${c.title}</div>
+          <div class="card-desc">${c.desc}</div>
+          ${c.files.map(f => `<div class="card-file"><span class="card-dot">·</span>${f}</div>`).join('')}
+        </div>
+      `).join('')}
+    </div>
+    <div class="quickstart-box">
+      <div class="quickstart-label">Quick Start</div>
+      <pre>npx create-turbo@latest enterprise-app
+cd enterprise-app
+npm install
+# Add NestJS backend
+npx nest new apps/api
+# Add Next.js frontend
+npx create-next-app apps/web --typescript
+# Start all services
+docker compose up -d
+turbo dev</pre>
+    </div>
+  `;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── TAB SWITCHING ────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.textContent.toLowerCase().includes(tab === 'arch' ? 'arch' : 'scaffold'))
+      b.classList.add('active');
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+
+renderLayers();
+renderSidebar();
+renderScaffold();
+</script>
+</body>
+</html>

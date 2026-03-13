@@ -1,0 +1,74 @@
+# Caddyfile — Production Reverse Proxy
+# ─────────────────────────────────────────────────────────
+# Caddy auto-provisions and renews Let's Encrypt TLS certs.
+# Replace yourdomain.com with your actual domain.
+# Place this file at: /etc/caddy/Caddyfile
+# Reload with: systemctl reload caddy
+# ─────────────────────────────────────────────────────────
+
+# ── Main Web App ─────────────────────────────────────────
+yourdomain.com {
+    reverse_proxy localhost:3000
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+
+    # Compress responses
+    encode gzip
+
+    # Access logs
+    log {
+        output file /var/log/caddy/web-access.log {
+            roll_size 100mb
+            roll_keep 5
+        }
+    }
+}
+
+# ── API ──────────────────────────────────────────────────
+api.yourdomain.com {
+    reverse_proxy localhost:3001
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        -Server
+    }
+
+    encode gzip
+
+    log {
+        output file /var/log/caddy/api-access.log {
+            roll_size 100mb
+            roll_keep 5
+        }
+    }
+}
+
+# ── Grafana — IP-restricted ──────────────────────────────
+# IMPORTANT: Restrict to your IP or use VPN — never expose publicly
+grafana.yourdomain.com {
+    # Uncomment to restrict to your IP:
+    # @blocked not remote_ip YOUR_IP_HERE
+    # respond @blocked "Forbidden" 403
+
+    reverse_proxy localhost:3030
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+    }
+}
+
+# ── Redirect www → apex ──────────────────────────────────
+www.yourdomain.com {
+    redir https://yourdomain.com{uri} permanent
+}

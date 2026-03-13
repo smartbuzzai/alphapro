@@ -1,0 +1,95 @@
+groups:
+  # ─────────────────────────────────────────────
+  # API Health Alerts
+  # ─────────────────────────────────────────────
+  - name: api.health
+    rules:
+      - alert: APIHighErrorRate
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status=~"5.."}[5m]))
+          /
+          sum(rate(http_request_duration_seconds_count[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High API error rate ({{ $value | humanizePercentage }})"
+          description: "Error rate has exceeded 5% for 2 minutes. Investigate immediately."
+          runbook: "https://wiki.internal/runbooks/api-high-error-rate"
+
+      - alert: APIHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High p95 latency on {{ $labels.route }}"
+          description: "p95 latency > 2s on route {{ $labels.route }}"
+
+      - alert: APIPodDown
+        expr: up{job="enterprise-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "API pod is down"
+          description: "enterprise-api target has been unreachable for 1 minute."
+
+  # ─────────────────────────────────────────────
+  # Circuit Breaker Alerts
+  # ─────────────────────────────────────────────
+  - name: circuit.breaker
+    rules:
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state{state="open"} == 1
+        for: 0m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Circuit breaker OPEN: {{ $labels.name }}"
+          description: "Circuit breaker {{ $labels.name }} has opened. Downstream service may be degraded."
+
+  # ─────────────────────────────────────────────
+  # Infrastructure Alerts
+  # ─────────────────────────────────────────────
+  - name: infra
+    rules:
+      - alert: HighMemoryUsage
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage: {{ $labels.pod }}"
+          description: "Pod {{ $labels.pod }} is using {{ $value | humanizePercentage }} of memory limit."
+
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 3
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Pod crash-looping: {{ $labels.pod }}"
+          description: "Pod {{ $labels.pod }} has restarted >3 times in 15 minutes."
+
+      - alert: PersistentVolumeLow
+        expr: |
+          (kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes) < 0.10
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "PV low disk: {{ $labels.persistentvolumeclaim }}"
+          description: "PVC {{ $labels.persistentvolumeclaim }} has < 10% free space."
